@@ -10,12 +10,10 @@ from twisted.internet import defer
 import html.parser
 import http.cookiejar
 import io
-import treq.client
 import twisted.internet
 import twisted.web.client
 import twisted.web.http_headers
 import urllib.parse
-import pdb
 
 CSSESSIONID = 'CSSESSIONID'
 JSESSIONID = 'JSESSIONID'
