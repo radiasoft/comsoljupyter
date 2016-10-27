@@ -1,1 +1,4 @@
+Twisted
+pyOpenSSL
 pykern
+service-identity
