@@ -4,19 +4,19 @@
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+from comsoljupyter import CSSESSIONID, JSESSIONID
 from http import HTTPStatus
 from pykern import pkdebug
 from twisted.internet import defer
+import comsoljupyter
 import html.parser
 import http.cookiejar
 import io
+import pickle
 import twisted.internet
 import twisted.web.client
 import twisted.web.http_headers
 import urllib.parse
-
-CSSESSIONID = 'CSSESSIONID'
-JSESSIONID = 'JSESSIONID'
 
 class ComsolClientError(Exception): pass
 
@@ -39,16 +39,16 @@ class HTMLTitleParser(html.parser.HTMLParser):
         if tag == 'title':
             self.title = True
 
-
 class ComsolClient(object):
     _login_title = 'Log in to COMSOL Server'
     _library_title = 'Application Library | COMSOL Server'
     _j_security_check = 'j_security_check'
     _app_lib = 'app-lib'
+    _jquery = 'javascript/jquery.min.js'
     def __init__(self, base_url, user, password, cookie_jar=None):
         self._cookie_cache = {}
         self.base_url = base_url
-        self.cookie_jar = http.cookiejar.MozillaCookieJar() if cookie_jar is None else cookie_jar
+        self.cookie_jar = http.cookiejar.CookieJar() if cookie_jar is None else cookie_jar
         self.password = password
         self.user = user
 
@@ -56,37 +56,34 @@ class ComsolClient(object):
         browser_agent = twisted.web.client.BrowserLikeRedirectAgent(agent)
         self.agent = twisted.web.client.CookieAgent(browser_agent, self.cookie_jar)
 
-    def _url(self, path):
-        return urllib.parse.urljoin(self.base_url, path)
-
     @staticmethod
-    def check_response(resp, expected):
+    def _check_response(resp, expected):
         if resp.code != expected:
             msg = "Response {0.phrase} ({0.code}), expected {1.phrase} ({1.value})"\
                             .format(resp, expected)
             raise ComsolClientError(msg)
+
+    def _log_response(self, resp, method, url):
+        pkdebug.pkdc('{0} {1} {2.phrase}({2.code})', method, url, resp)
+        pkdebug.pkdc('{0} {1} {2}', method, url, resp.headers)
+        pkdebug.pkdc('{0} {1} {2}', method, url, self.cookie_jar)
+        return resp
+
+    def _url(self, path):
+        return urllib.parse.urljoin(self.base_url, path)
 
     @property
     def CSSESSIONID(self):
         return self.get_cookie(CSSESSIONID)
 
     def get(self, path, headers={}, *a, **kw):
-        url = self._url(path)
-        pkdebug.pkdc('GET {}', url)
-        return self.agent.request(
-            headers=twisted.web.http_headers.Headers(headers),
-            method=b'GET',
-            uri=url.encode(),
-            *a,
-            **kw,
-        )
+        return self.request('GET', path, headers, *a, **kw)
 
     def get_cookie(self, name):
         if name not in self._cookie_cache:
-            for cookie in self.cookie_jar:
-                if cookie.name == name:
-                    self._cookie_cache[name] = cookie
-                    break
+            cookie = comsoljupyter.search_in_cookie_jar(self.cookie_jar, name)
+            if cookie is not None:
+                self._cookie_cache[name] = cookie
         return self._cookie_cache.get(name, None)
 
     @property
@@ -99,16 +96,11 @@ class ComsolClient(object):
 
     def login(self):
         def handle_login_resp(resp):
-            self.check_response(resp, HTTPStatus.OK)
-            pkdebug.pkdc('{}', resp.headers)
-            pkdebug.pkdc('{}', self.cookie_jar)
-
+            self._check_response(resp, HTTPStatus.OK)
             return self.has_session
 
         def do_login(resp):
-            self.check_response(resp, HTTPStatus.OK)
-            pkdebug.pkdc('{}', resp.headers)
-            pkdebug.pkdc('{}', self.cookie_jar)
+            self._check_response(resp, HTTPStatus.OK)
 
             return self.post_form(
                 form_values={'j_username': self.user, 'j_password': self.password},
@@ -117,18 +109,12 @@ class ComsolClient(object):
 
         # Do a request to get Cookies stored in the client
         # if successful, execute a login request
-        return self.get(self._app_lib).addCallback(do_login)
+        return self.get(self._app_lib)\
+            .addCallback(lambda _: self.get(self._jquery))\
+            .addCallback(do_login)
 
     def post(self, path, headers={}, *a, **kw):
-        url = self._url(path)
-        pkdebug.pkdc('POST {}', url)
-        return self.agent.request(
-            headers=twisted.web.http_headers.Headers(headers),
-            method=b'POST',
-            uri=url.encode(),
-            *a,
-            **kw,
-        )
+        return self.request('POST', path, headers, *a, **kw)
 
     def post_form(self, path, form_values):
         data = urllib.parse.urlencode(form_values)
@@ -137,6 +123,20 @@ class ComsolClient(object):
             headers={'Content-Type': ['application/x-www-form-urlencoded']},
             path=path,
         )
+
+    def request(self, method, path, headers={}, *a, **kw):
+        url = self._url(path)
+        pkdebug.pkdc('{} {}', method, url)
+        return self.agent.request(
+            headers=twisted.web.http_headers.Headers(headers),
+            method=method.encode(),
+            uri=url.encode(),
+            *a,
+            **kw,
+        ).addCallback(self._log_response, method, url)
+
+    def save_cookie_jar(self, filename):
+        pickle.dump(self.cookie_jar, open(filename, 'wb'))
 
     def session_active(self):
         if not self.has_session:
@@ -153,7 +153,7 @@ class ComsolClient(object):
             return False
 
         def handle_resp(resp):
-            self.check_response(resp, HTTPStatus.OK)
+            self._check_response(resp, HTTPStatus.OK)
             pkdebug.pkdc('{}', resp.headers)
             pkdebug.pkdc('{}', self.cookie_jar)
             return twisted.web.client.readBody(resp).addCallback(handle_body)

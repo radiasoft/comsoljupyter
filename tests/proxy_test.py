@@ -8,4 +8,4 @@
 import comsoljupyter.proxy
 
 def test_instantiate_proxy():
-    comsoljupyter.proxy.ComsolProxy('', '')
+    comsoljupyter.proxy.ComsolProxy('', '', '')

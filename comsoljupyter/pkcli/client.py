@@ -15,26 +15,25 @@ import tempfile
 RET = 0
 
 @inlineCallbacks
-def _run(base_url, user, password):
+def _run(base_url, user, password, cookie_path):
     global RET
 
     try:
         client = comsoljupyter.client.ComsolClient(base_url, user, password)
 
         logged = yield client.login()
-        assert logged
+        assert logged, 'Not logged'
 
         active = yield client.session_active()
-        assert active
+        assert active, 'Session not active'
 
-        print(client.CSSESSIONID.name, client.CSSESSIONID.value)
-        print(client.JSESSIONID.name, client.JSESSIONID.value)
+        client.save_cookie_jar(cookie_path)
     except:
         pkdebug.pkdp(pkdebug.pkdexc())
         RET = 1
     reactor.stop()
 
-def default_command(base_url, user, password):
-    reactor.callWhenRunning(_run, base_url, user, password)
+def default_command(base_url, user, password, cookie_path):
+    reactor.callWhenRunning(_run, base_url, user, password, cookie_path)
     reactor.run()
     sys.exit(RET)
