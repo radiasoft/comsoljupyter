@@ -5,7 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
-import comsoljupyter.proxy
+import comsoljupyter.web
 
-def test_instantiate_proxy():
-    comsoljupyter.proxy.ComsolProxy('', '', '')
+def default_command():
+    comsoljupyter.web.run()

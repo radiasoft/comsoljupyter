@@ -1,4 +1,7 @@
+-e git+https://github.com/maxcountryman/flask-login#egg=Flask_Login
+Flask-SQLAlchemy
 Twisted
+flask
 pyOpenSSL
 pykern
 service-identity
