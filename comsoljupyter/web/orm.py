@@ -1,16 +1,47 @@
+# -*- coding: utf-8 -*-
+
+"""
+:copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
+"""
 from comsoljupyter.web import app
 import flask_login
 import flask_sqlalchemy
 import werkzeug.exceptions
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/comsolapp.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = flask_sqlalchemy.SQLAlchemy(app)
 
+class ComsolCredentials(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    password = db.Column(db.String(256), nullable=False)
+    username = db.Column(db.String(256), unique=True, nullable=False)
+
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+
+class ComsolSession(db.Model):
+    credential = db.relationship('ComsolCredentials', backref=db.backref('session', lazy='dynamic'))
+    credential_id = db.Column(db.Integer, db.ForeignKey('comsol_credentials.id'),
+        unique=True, nullable=False)
+    cssessionid = db.Column(db.String(256), nullable=False, unique=True)
+    id = db.Column(db.Integer, primary_key=True)
+    jsessionid = db.Column(db.String(256), nullable=False, unique=True)
+    user = db.relationship('User', backref=db.backref('session', lazy='dynamic'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+
+    def __init__(self, cssessionid, jsessionid, credential):
+        self.jsessionid = jsessionid
+        self.cssessionid = cssessionid
+        self.credential = credential
+
 class User(db.Model, flask_login.UserMixin):
-    password = db.Column(db.String(80))
-    username = db.Column(db.String(80), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    password = db.Column(db.String(256), nullable=False)
+    username = db.Column(db.String(256), unique=True)
 
     def __init__(self, username, password):
         self.password = password
@@ -25,11 +56,13 @@ class User(db.Model, flask_login.UserMixin):
     def get_id(self):
         return self.username
 
+def add(obj):
+    db.session.add(obj)
+    db.session.commit()
+    return obj
+
 def get_user_by_username(username):
     return User.query.filter(User.username == username).first()
 
-def add_username(username, password):
-    u = User(username, password)
-    db.session.add(u)
-    db.session.commit()
-    return u
+def init():
+    db.create_all()
