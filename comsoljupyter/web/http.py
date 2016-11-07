@@ -1,4 +1,4 @@
-from comsoljupyter.web import app, orm
+from comsoljupyter.web import app, orm, twisted
 
 app.secret_key = 'super secret string'  # Change this!
 
@@ -18,13 +18,19 @@ PASS_FORM = '''
 
 COMSOL_LINK = '''
 <p>Logged in as: {0}</p>
-<p>Open <a href="/goto-comsol" target="_blank">Comsol</a></p>
+<p>Open <a href="{1}" target="_blank">Comsol</a></p>
 '''
 
-@app.route('/goto-comsol')
+@app.route('/open-comsol')
 @flask_login.login_required
 def get_comsol_session():
-    pass
+    user = flask_login.current_user
+    creds = orm.get_unused_credentials()
+    if creds is not None:
+        session = twisted.t.get_comsol_session(creds)
+        session.user = user
+        orm.add(session)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -49,7 +55,10 @@ def logout():
 @app.route('/protected')
 @flask_login.login_required
 def protected():
-    return COMSOL_LINK.format(flask_login.current_user.username)
+    return COMSOL_LINK.format(
+        flask_login.current_user.username,
+        flask.url_for('get_comsol_session')
+    )
 
 
 @login_manager.unauthorized_handler

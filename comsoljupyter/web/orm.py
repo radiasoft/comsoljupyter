@@ -61,6 +61,12 @@ def add(obj):
     db.session.commit()
     return obj
 
+def get_unused_credentials():
+    return ComsolCredentials.query.\
+        outerjoin(ComsolSession).\
+        filter(ComsolSession.credential_id == None).\
+        first()
+
 def get_user_by_username(username):
     return User.query.filter(User.username == username).first()
 
