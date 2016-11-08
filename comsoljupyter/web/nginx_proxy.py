@@ -35,12 +35,18 @@ class NginxProxy(object):
             self._nginx_conf_file,
         )
 
-        if self._nginx_proc is None:
-            self._nginx_proc = subprocess.Popen(
-                ['nginx', '-c', self._nginx_conf_file]
-            )
+        if len(self._session_cookies) > 0:
+            if self._nginx_proc is None:
+                self._nginx_proc = subprocess.Popen(
+                    ['nginx', '-c', self._nginx_conf_file]
+                )
+            else:
+                self._nginx_proc.send_signal(signal.SIGHUP)
         else:
-            self._nginx_proc.send_signal(signal.SIGHUP)
+            if self._nginx_proc is not None:
+                n = self._nginx_proc
+                self._nginx_proc = None
+                n.kill()
 
     def add_session(self, session):
         p = ProxiedSession(
@@ -54,4 +60,9 @@ class NginxProxy(object):
             assert p == self._session_cookies[p.rsessionid]
         else:
             self._session_cookies[session.rsessionid] = p
+            self._update_config()
+
+    def delete_session(self, session):
+        if session.rsessionid in self._session_cookies:
+            del self._session_cookies[session.rsessionid]
             self._update_config()

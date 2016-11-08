@@ -79,6 +79,7 @@ def login():
 def logout():
     user = flask_login.current_user
     if user.session is not None:
+        proxy.delete_session(user.session)
         orm.delete(user.session)
     flask_login.logout_user()
     return flask.redirect(flask.url_for('login'))
@@ -86,7 +87,7 @@ def logout():
 @app.route('/protected')
 @flask_login.login_required
 def protected():
-    print(repr(flask_=`=jedi=0, login.current_user.session))=`= (self, *args, *_***kwargs*_*) =`=jedi=`=
+    print(repr(flask_login.current_user.session))
     return COMSOL_LINK.format(
         flask_login.current_user.username,
         flask.url_for('get_comsol_session'),
