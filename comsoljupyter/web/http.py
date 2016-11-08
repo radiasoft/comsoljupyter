@@ -8,6 +8,7 @@ from comsoljupyter.web import app, orm, twisted, nginx_proxy
 from http import HTTPStatus
 import comsoljupyter
 import datetime
+import html
 
 app.secret_key = 'super secret string'  # Change this!
 
@@ -29,6 +30,7 @@ PASS_FORM = '''
 
 COMSOL_LINK = '''
 <p>Logged in as: {0}</p>
+<p>ComsolSession: {2}</p>
 <p>Open <a href="{1}" target="_blank">Comsol</a></p>
 '''
 
@@ -73,18 +75,32 @@ def login():
     return 'Bad login'
 
 @app.route('/logout')
+@flask_login.login_required
 def logout():
+    user = flask_login.current_user
+    if user.session is not None:
+        orm.delete(user.session)
     flask_login.logout_user()
-    return 'Logged out'
+    return flask.redirect(flask.url_for('login'))
 
 @app.route('/protected')
 @flask_login.login_required
 def protected():
+    print(repr(flask_=`=jedi=0, login.current_user.session))=`= (self, *args, *_***kwargs*_*) =`=jedi=`=
     return COMSOL_LINK.format(
         flask_login.current_user.username,
-        flask.url_for('get_comsol_session')
+        flask.url_for('get_comsol_session'),
+        html.escape(repr(flask_login.current_user.session)),
     )
 
+
+@app.route('/')
+def root():
+    if flask_login.current_user.is_authenticated:
+        r = flask.redirect('protected')
+    else:
+        r = flask.redirect('login')
+    return r
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():

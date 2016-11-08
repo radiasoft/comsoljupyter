@@ -52,6 +52,16 @@ class ComsolSession(db.Model):
         self.rsessionid = self._gen_session_id()
         self.user = user
 
+    def __repr__(self):
+        return \
+'''ComsolSession<
+    cssessionid={0.cssessionid},
+    jsessionid={0.jsessionid},
+    listen_port={0.listen_port}
+    rsessionid={0.rsessionid},
+    username={0.user.username},
+>'''.format(self)
+
     @staticmethod
     def _gen_session_id():
         return  base64.b64encode(os.urandom(10)).decode('utf-8')
@@ -80,6 +90,10 @@ def add(obj):
     db.session.add(obj)
     db.session.commit()
     return obj
+
+def delete(obj):
+    db.session.delete(obj)
+    db.session.commit()
 
 def get_unused_credentials():
     return ComsolCredentials.query.\
