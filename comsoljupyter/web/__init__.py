@@ -11,6 +11,6 @@ app = flask.Flask(__name__)
 import comsoljupyter.web.http
 from comsoljupyter.web.orm import db
 
-def run():
+def run(port, debug=False):
     orm.init()
-    app.run()
+    app.run(host='0.0.0.0', port=port, debug=debug)

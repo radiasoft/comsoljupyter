@@ -1,12 +1,18 @@
-http {
-    daemon off;
+daemon off;
+pid /tmp/nginx_comsol.pid;
 
-    access_log /tmp/comsol_access.log;
-    error_log /tmp/comsol_error.log;
+events {
+    worker_connections 768;
+}
+
+http {
+    error_log /tmp/comsol_nginx.error.log;
+    access_log /tmp/comsol_nginx.access.log;
+
 
     {% for s in sessions %}
-    
     server {
+
         listen {{ s.port }};
 
         if ($cookie_RSESSIONID != "{{ s.rsessionid }}") {
@@ -15,14 +21,14 @@ http {
 
         location / {
             proxy_pass https://comsol.radiasoft.org;
-            proxy_set_header Cookie "CSSESSIONID={{ s.cssessionid }}; JSESSIONID={{ s.jsessionid }}; ${cookies}";
+            proxy_set_header Cookie "CSSESSIONID={{ s.cssessionid }}; JSESSIONID={{ s.jsessionid }}; ${http_cookie}";
         }
 
         location /ui-ws {
             proxy_http_version 1.1;
             proxy_pass https://comsol.radiasoft.org;
             proxy_set_header Connection "upgrade";
-            proxy_set_header Cookie "CSSESSIONID={{ s.cssessionid }}; JSESSIONID={{ s.jsessionid }}; ${cookies}";
+            proxy_set_header Cookie "CSSESSIONID={{ s.cssessionid }}; JSESSIONID={{ s.jsessionid }}; ${http_cookie}";
             proxy_set_header Upgrade $http_upgrade;
         }
 

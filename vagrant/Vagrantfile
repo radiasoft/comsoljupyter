@@ -21,6 +21,7 @@ Vagrant.configure("2") do |config|
         set -e -u
         grep -q nameserver /etc/resolvconf/resolv.conf.d/head || echo 'nameserver 8.8.8.8\nnameserver 8.8.4.4' >> /etc/resolvconf/resolv.conf.d/head
         resolvconf -u
-        iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port 8080
+        apt-get install python3-pip python3-virtualenv nginx-full
+        #iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port 8080
     SHELL
 end

@@ -38,7 +38,11 @@ class NginxProxy(object):
         if len(self._session_cookies) > 0:
             if self._nginx_proc is None:
                 self._nginx_proc = subprocess.Popen(
-                    ['nginx', '-c', self._nginx_conf_file]
+                    [
+                        'nginx', '-c', self._nginx_conf_file,
+                        '-g', 'error_log stderr;',
+                        '-p', '/tmp'
+                        ]
                 )
             else:
                 self._nginx_proc.send_signal(signal.SIGHUP)

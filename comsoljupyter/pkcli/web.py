@@ -7,5 +7,5 @@
 
 import comsoljupyter.web
 
-def default_command():
-    comsoljupyter.web.run()
+def default_command(port=5000, debug=False):
+    comsoljupyter.web.run(port=port, debug=debug)
