@@ -9,6 +9,7 @@ from http import HTTPStatus
 import comsoljupyter
 import datetime
 import html
+import time
 
 app.secret_key = 'super secret string'  # Change this!
 
@@ -54,8 +55,10 @@ def get_comsol_session():
     r.set_cookie(
         key=comsoljupyter.RSESSIONID,
         value=user.session.rsessionid,
-        domain='.radiasoft.org',
+        httponly=True,
     )
+
+    time.sleep(0.5)
 
     return r
 
