@@ -12,16 +12,16 @@ import twisted.internet.threads
 
 class TwistedThread(threading.Thread):
     def run(self):
-        twisted.internet.reactor.run()
+        twisted.internet.reactor.run(installSignalHandlers=False)
 
-t = TwistedThread()
+t = TwistedThread(daemon=True)
 t.start()
 
-def get_comsol_session(credentials):
+def get_comsol_session(user, credentials):
     client = comsoljupyter.client.ComsolClient(
         'https://comsol.radiasoft.org',
-        credential.username,
-        credential.password,
+        credentials.username,
+        credentials.password,
     )
 
     twisted.internet.threads.blockingCallFromThread(
@@ -29,9 +29,14 @@ def get_comsol_session(credentials):
         client.login,
     )
 
-    assert client.has_session and client.session_active()
+    assert client.has_session and \
+        twisted.internet.threads.blockingCallFromThread(
+            twisted.internet.reactor,
+            client.session_active,
+        )
 
     return comsoljupyter.web.orm.ComsolSession(
+        user,
         client.CSSESSIONID.value,
         client.JSESSIONID.value,
         credentials,

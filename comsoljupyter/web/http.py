@@ -1,4 +1,13 @@
-from comsoljupyter.web import app, orm, twisted
+# -*- coding: utf-8 -*-
+
+"""
+:copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
+"""
+from comsoljupyter.web import app, orm, twisted, nginx_proxy
+from http import HTTPStatus
+import comsoljupyter
+import datetime
 
 app.secret_key = 'super secret string'  # Change this!
 
@@ -7,6 +16,8 @@ import flask_login
 
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
+
+proxy = nginx_proxy.NginxProxy()
 
 PASS_FORM = '''
 <form action="login" method="POST">
@@ -25,12 +36,26 @@ COMSOL_LINK = '''
 @flask_login.login_required
 def get_comsol_session():
     user = flask_login.current_user
-    creds = orm.get_unused_credentials()
-    if creds is not None:
-        session = twisted.t.get_comsol_session(creds)
-        session.user = user
-        orm.add(session)
 
+    if user.session is None:
+        creds = orm.get_unused_credentials()
+        if creds is not None:
+            session = twisted.get_comsol_session(user, creds)
+            orm.add(session)
+        else:
+            flask.abort(HTTPStatus.CONFLICT.value)
+
+    # Start Proxy Nginx and return redirect
+    proxy.add_session(user.session)
+
+    r = flask.redirect('https://comsol.radiasoft.org:{}'.format(user.session.listen_port))
+    r.set_cookie(
+        key=comsoljupyter.RSESSIONID,
+        value=user.session.rsessionid,
+        domain='.radiasoft.org',
+    )
+
+    return r
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

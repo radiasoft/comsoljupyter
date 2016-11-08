@@ -5,8 +5,11 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from comsoljupyter.web import app
+import base64
 import flask_login
 import flask_sqlalchemy
+import os
+import random
 import werkzeug.exceptions
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/comsolapp.db'
@@ -17,6 +20,8 @@ db = flask_sqlalchemy.SQLAlchemy(app)
 class ComsolCredentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     password = db.Column(db.String(256), nullable=False)
+    session = db.relationship('ComsolSession',
+        back_populates='credential', uselist=False)
     username = db.Column(db.String(256), unique=True, nullable=False)
 
     def __init__(self, username, password):
@@ -24,24 +29,39 @@ class ComsolCredentials(db.Model):
         self.password = password
 
 class ComsolSession(db.Model):
-    credential = db.relationship('ComsolCredentials', backref=db.backref('session', lazy='dynamic'))
+    credential=db.relationship('ComsolCredentials', uselist=False,
+        back_populates='session')
     credential_id = db.Column(db.Integer, db.ForeignKey('comsol_credentials.id'),
         unique=True, nullable=False)
     cssessionid = db.Column(db.String(256), nullable=False, unique=True)
     id = db.Column(db.Integer, primary_key=True)
     jsessionid = db.Column(db.String(256), nullable=False, unique=True)
-    user = db.relationship('User', backref=db.backref('session', lazy='dynamic'))
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    listen_port = db.Column(db.Integer, nullable=False, unique=True)
+    rsessionid = db.Column(db.String(256), nullable=False, unique=True)
+    user = db.relationship('User', uselist=False, back_populates='session')
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True,
+        nullable=False)
 
-    def __init__(self, cssessionid, jsessionid, credential):
-        self.jsessionid = jsessionid
-        self.cssessionid = cssessionid
+    def __init__(self, user, cssessionid, jsessionid, credential):
+        random.seed()
+
         self.credential = credential
+        self.cssessionid = cssessionid
+        self.jsessionid = jsessionid
+        self.listen_port = random.sample(range(2**15, 2**16-1), 1).pop()
+        self.rsessionid = self._gen_session_id()
+        self.user = user
+
+    @staticmethod
+    def _gen_session_id():
+        return  base64.b64encode(os.urandom(10)).decode('utf-8')
 
 class User(db.Model, flask_login.UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     password = db.Column(db.String(256), nullable=False)
-    username = db.Column(db.String(256), unique=True)
+    session = db.relationship('ComsolSession',
+        back_populates='user', uselist=False)
+    username = db.Column(db.String(256), unique=True, nullable=False)
 
     def __init__(self, username, password):
         self.password = password
