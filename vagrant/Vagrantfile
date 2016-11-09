@@ -21,8 +21,25 @@ Vagrant.configure("2") do |config|
         set -e -u
         grep -q nameserver /etc/resolvconf/resolv.conf.d/head || echo 'nameserver 8.8.8.8\nnameserver 8.8.4.4' >> /etc/resolvconf/resolv.conf.d/head
         resolvconf -u
-        apt-get install python3-pip python3-virtualenv nginx-full ssl-cert
+        apt-get update
+        apt-get install -y python3-pip python3-virtualenv nginx-full ssl-cert libssl-dev virtualenv libyaml-dev libffi-dev
         update-rc.d nginx disable
         service nginx stop
+
+        sudo -u ubuntu -i /bin/bash -l << 'EOF'
+            set -e
+
+            test -d $HOME/venv || virtualenv -p python3 $HOME/venv
+            source $HOME/venv/bin/activate
+            pip install --upgrade pip
+            pip install --upgrade setuptools
+
+            cd /comsoljupyter
+            pip install -r requirements.txt
+            pip install .
+
+            grep -q '$HOME/venv/bin/activate' $HOME/.bashrc || echo 'source $HOME/venv/bin/activate' >> $HOME/.bashrc
+EOF
+
     SHELL
 end

@@ -3,5 +3,6 @@ Flask-SQLAlchemy
 Twisted
 flask
 pyOpenSSL
+pyyaml
 pykern
 service-identity
