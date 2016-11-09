@@ -5,12 +5,10 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from comsoljupyter.web import app
-import base64
 import flask_login
 import flask_sqlalchemy
-import os
 import random
-import werkzeug.exceptions
+import uuid
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/comsolapp.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -48,7 +46,7 @@ class ComsolSession(db.Model):
         self.credential = credential
         self.cssessionid = cssessionid
         self.jsessionid = jsessionid
-        self.listen_port = random.sample(range(2**15, 2**16-1), 1).pop()
+        self.listen_port = self._get_random_port()
         self.rsessionid = self._gen_session_id()
         self.user = user
 
@@ -64,7 +62,11 @@ class ComsolSession(db.Model):
 
     @staticmethod
     def _gen_session_id():
-        return  base64.b64encode(os.urandom(10)).decode('utf-8')
+        return uuid.uuid1().hex
+
+    @staticmethod
+    def _get_random_port():
+        return random.sample(range(2**15, 2**16-1), 1).pop()
 
 class User(db.Model, flask_login.UserMixin):
     id = db.Column(db.Integer, primary_key=True)

@@ -1,3 +1,0 @@
-[submodule "configurable-http-proxy"]
-	path = deps/configurable-http-proxy
-	url = https://github.com/radiasoft/configurable-http-proxy.git

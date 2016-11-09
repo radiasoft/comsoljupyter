@@ -51,7 +51,7 @@ def get_comsol_session():
     # Start Proxy Nginx and return redirect
     proxy.add_session(user.session)
 
-    r = flask.redirect('http://comsol.radiasoft.org:{}'.format(user.session.listen_port))
+    r = flask.redirect('http://comsol.radiasoft.org:{}/app-lib'.format(user.session.listen_port))
     r.set_cookie(
         key=comsoljupyter.RSESSIONID,
         value=user.session.rsessionid,
