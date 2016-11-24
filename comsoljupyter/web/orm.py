@@ -70,7 +70,6 @@ class ComsolSession(db.Model):
 
 class User(db.Model, flask_login.UserMixin):
     id = db.Column(db.Integer, primary_key=True)
-    password = db.Column(db.String(256), nullable=False)
     session = db.relationship('ComsolSession',
         back_populates='user', uselist=False)
     username = db.Column(db.String(256), unique=True, nullable=False)
