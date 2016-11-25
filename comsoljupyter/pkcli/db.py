@@ -7,10 +7,7 @@
 
 from comsoljupyter.web import orm
 
-orm.init()
 
-def add_user(username, password):
-    orm.add(orm.User(username, password))
-
-def add_credentials(username, password):
+def add_credentials(username, password, state_path='/tmp'):
+    orm.init(state_path)
     orm.add(orm.ComsolCredentials(username, password))

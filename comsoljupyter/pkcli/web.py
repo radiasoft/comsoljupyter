@@ -11,9 +11,9 @@ import traceback
 
 os.setpgrp()
 
-def default_command(port=5000, debug=False):
+def default_command(port=5000, state_path='/tmp', debug=False):
     try:
-        comsoljupyter.web.run(port=port, debug=debug)
+        comsoljupyter.web.run(port=port, state_path=state_path, debug=debug)
     except:
         traceback.print_exc()
     finally:

@@ -19,14 +19,19 @@ app.secret_key = 'super secret string'  # Change this!
 
 import flask
 
-prefix = os.environ.get('JUPYTERHUB_SERVICE_PREFIX', '/')
-
-proxy = nginx_proxy.NginxProxy()
-
 auth = jupyterhub.services.auth.HubAuth(
     api_token=os.environ['JUPYTERHUB_API_TOKEN'],
     cookie_cache_max_age=60,
 )
+
+prefix = os.environ.get('JUPYTERHUB_SERVICE_PREFIX', '/')
+
+proxy = None
+
+def init(state_path):
+    global proxy
+
+    proxy = nginx_proxy.NginxProxy(state_path)
 
 def jupyterhub_auth(f):
     @functools.wraps(f)
@@ -45,10 +50,9 @@ def jupyterhub_auth(f):
 
     return wrapper
 
-
 @app.route(prefix)
 @jupyterhub_auth
-def get_comsol_session(user):
+def get_comsol_session():
     u = orm.get_user_by_username(user)
 
     if u.session is None:

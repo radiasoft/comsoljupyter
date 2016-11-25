@@ -8,9 +8,15 @@ import flask
 
 app = flask.Flask(__name__)
 
-import comsoljupyter.web.http
-from comsoljupyter.web.orm import db
 
-def run(port, debug=False):
-    orm.init()
+def init(state_path):
+    import comsoljupyter.web.orm
+    comsoljupyter.web.orm.init(state_path)
+
+    import comsoljupyter.web.http
+    comsoljupyter.web.http.init(state_path)
+
+
+def run(port, state_path, debug=False):
+    init(state_path)
     app.run(host='0.0.0.0', port=port, debug=debug)

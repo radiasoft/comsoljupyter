@@ -18,20 +18,27 @@ ProxiedSession = collections.namedtuple(
 )
 
 class NginxProxy(object):
-    _nginx_conf_file = '/tmp/comsol_nginx.conf'
     _nginx_conf_template = pkg_resources.resource_filename(
         'comsoljupyter',
         'package_data/nginx.j2',
     )
 
-    def __init__(self):
+    def __init__(self, state_path):
         self._nginx_proc = None
         self._session_cookies = {}
+        self._state_path = state_path
+
+    @property
+    def _nginx_conf_file(self):
+        return '{}/comsol_nginx.conf'.format(self._state_path)
 
     def _update_config(self):
         pykern.pkjinja.render_resource(
             'nginx_conf',
-            {'sessions': self._session_cookies.values()},
+            {
+                'sessions': self._session_cookies.values(),
+                'state_path': self._state_path,
+            },
             self._nginx_conf_file,
         )
 
@@ -41,7 +48,7 @@ class NginxProxy(object):
                     [
                         'nginx', '-c', self._nginx_conf_file,
                         '-g', 'error_log stderr;',
-                        '-p', '/tmp'
+                        '-p', self._state_path
                         ]
                 )
             else:
