@@ -5,11 +5,8 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 import comsoljupyter.web
-import os
-import signal
 import traceback
 
-os.setpgrp()
 
 def default_command(port=5000, state_path='/tmp', debug=False):
     try:
@@ -17,4 +14,4 @@ def default_command(port=5000, state_path='/tmp', debug=False):
     except:
         traceback.print_exc()
     finally:
-        os.killpg(0, signal.SIGKILL)
+        comsoljupyter.web.cleanup()

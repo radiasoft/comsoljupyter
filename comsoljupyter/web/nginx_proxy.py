@@ -20,7 +20,7 @@ ProxiedSession = collections.namedtuple(
 class NginxProxy(object):
     _nginx_conf_template = pkg_resources.resource_filename(
         'comsoljupyter',
-        'package_data/nginx.j2',
+        'package_data/nginx_conf.jinja',
     )
 
     def __init__(self, state_path):
@@ -77,3 +77,8 @@ class NginxProxy(object):
         if session.rsessionid in self._session_cookies:
             del self._session_cookies[session.rsessionid]
             self._update_config()
+
+    def stop(self):
+        if self._nginx_proc is not None:
+            self._nginx_proc.terminate()
+            self._nginx_proc = None

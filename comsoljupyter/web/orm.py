@@ -13,6 +13,7 @@ comsoljupyter.web.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = flask_sqlalchemy.SQLAlchemy(comsoljupyter.web.app)
 
+
 class ComsolCredentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     password = db.Column(db.String(256), nullable=False)
@@ -23,6 +24,7 @@ class ComsolCredentials(db.Model):
     def __init__(self, username, password):
         self.username = username
         self.password = password
+
 
 class ComsolSession(db.Model):
     credential=db.relationship('ComsolCredentials', uselist=False,
@@ -64,7 +66,8 @@ class ComsolSession(db.Model):
 
     @staticmethod
     def _get_random_port():
-        return random.sample(range(2**15, 2**16-1), 1).pop()
+        return random.sample(range(2**16-100, 2**16-1), 1).pop()
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -78,20 +81,28 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % self.username
 
+
 def add(obj):
     db.session.add(obj)
     db.session.commit()
     return obj
 
+
+def cleanup():
+    db.session.commit()
+
+
 def delete(obj):
     db.session.delete(obj)
     db.session.commit()
+
 
 def get_unused_credentials():
     return ComsolCredentials.query.\
         outerjoin(ComsolSession).\
         filter(ComsolSession.credential_id == None).\
         first()
+
 
 def get_user_by_username(username):
     u = User.query.filter(User.username == username).first()
@@ -100,6 +111,7 @@ def get_user_by_username(username):
         add(u)
     return u
 
+
 def init(state_path):
-    comsoljupyter.web.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///{}/comsolapp.db'.format(state_path)
+    comsoljupyter.web.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///{}/comsolapp.sqlite'.format(state_path)
     db.create_all()

@@ -28,6 +28,10 @@ prefix = os.environ.get('JUPYTERHUB_SERVICE_PREFIX', '/')
 
 proxy = None
 
+def cleanup():
+    if proxy is not None:
+        proxy.stop()
+
 def init(state_path):
     global proxy
 
@@ -43,7 +47,7 @@ def jupyterhub_auth(f):
             user = None
 
         if user is not None:
-            return f(user, *a, **kw)
+            return f(str(user), *a, **kw)
 
         return flask.redirect(
             auth.login_url+'?next={}'.format(urllib.parse.quote(flask.request.path)))
@@ -52,8 +56,8 @@ def jupyterhub_auth(f):
 
 @app.route(prefix)
 @jupyterhub_auth
-def get_comsol_session():
-    u = orm.get_user_by_username(user)
+def get_comsol_session(user):
+    u = orm.get_user_by_username('pepe')
 
     if u.session is None:
         creds = orm.get_unused_credentials()
@@ -66,10 +70,10 @@ def get_comsol_session():
     # Start Proxy Nginx and return redirect
     proxy.add_session(u.session)
 
-    r = flask.redirect('http://comsol.radiasoft.org:{}/app-lib'.format(user.session.listen_port))
+    r = flask.redirect('http://comsol.radiasoft.org:{}/app-lib'.format(u.session.listen_port))
     r.set_cookie(
         key=comsoljupyter.RSESSIONID,
-        value=user.session.rsessionid,
+        value=u.session.rsessionid,
         httponly=True,
     )
 

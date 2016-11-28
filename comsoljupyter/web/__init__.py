@@ -9,6 +9,14 @@ import flask
 app = flask.Flask(__name__)
 
 
+def cleanup():
+    import comsoljupyter.web.orm
+    comsoljupyter.web.orm.cleanup()
+
+    import comsoljupyter.web.http
+    comsoljupyter.web.http.cleanup()
+
+
 def init(state_path):
     import comsoljupyter.web.orm
     comsoljupyter.web.orm.init(state_path)
