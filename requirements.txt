@@ -1,7 +1,7 @@
 Flask-SQLAlchemy
 Twisted
 flask
-jupyterhub>=0.7.0b1
+jupyterhub
 pyOpenSSL
 pykern
 pyyaml
