@@ -72,9 +72,10 @@ def get_comsol_session(user):
 
     r = flask.redirect('http://comsol.radiasoft.org:{}/app-lib'.format(u.session.listen_port))
     r.set_cookie(
+        domain='.radiasoft.org',
+        httponly=True,
         key=comsoljupyter.RSESSIONID,
         value=u.session.rsessionid,
-        httponly=True,
     )
 
     time.sleep(0.5)
