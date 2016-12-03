@@ -17,14 +17,14 @@ def cleanup():
     comsoljupyter.web.http.cleanup()
 
 
-def init(state_path):
+def init(state_path, jupyterhub_base_url):
     import comsoljupyter.web.orm
     comsoljupyter.web.orm.init(state_path)
 
     import comsoljupyter.web.http
-    comsoljupyter.web.http.init(state_path)
+    comsoljupyter.web.http.init(state_path, jupyterhub_base_url)
 
 
-def run(port, state_path, debug=False):
-    init(state_path)
+def run(port, jupyterhub_base_url, state_path, debug=False):
+    init(state_path, jupyterhub_base_url)
     app.run(host='0.0.0.0', port=port, debug=debug)

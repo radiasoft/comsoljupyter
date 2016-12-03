@@ -24,18 +24,20 @@ auth = jupyterhub.services.auth.HubAuth(
     cookie_cache_max_age=60,
 )
 
-prefix = os.environ.get('JUPYTERHUB_SERVICE_PREFIX', '/')
+JUPYTERHUB_BASE_URL = None
+PREFIX = os.environ.get('JUPYTERHUB_SERVICE_PREFIX', '/')
 
-proxy = None
+PROXY = None
 
 def cleanup():
-    if proxy is not None:
-        proxy.stop()
+    if PROXY is not None:
+        PROXY.stop()
 
-def init(state_path):
-    global proxy
+def init(state_path, jupyterhub_base_url):
+    global PROXY, JUPYTERHUB_BASE_URL
 
-    proxy = nginx_proxy.NginxProxy(state_path)
+    JUPYTERHUB_BASE_URL = jupyterhub_base_url
+    PROXY = nginx_proxy.NginxProxy(state_path, jupyterhub_base_url)
 
 def jupyterhub_auth(f):
     @functools.wraps(f)
@@ -54,28 +56,48 @@ def jupyterhub_auth(f):
 
     return wrapper
 
-@app.route(prefix)
-@jupyterhub_auth
-def get_comsol_session(user):
-    u = orm.get_user_by_username('pepe')
 
-    if u.session is None:
+
+@app.route(PREFIX + '/logout')
+@jupyterhub_auth
+def forget_comsol_session(username):
+    user = orm.get_user_by_username(username)
+
+    if user.session is not None:
+        orm.delete(user.session)
+        user.session = None
+
+    return flask.redirect(JUPYTERHUB_BASE_URL)
+
+
+@app.route(PREFIX)
+@jupyterhub_auth
+def get_comsol_session(username):
+    user = orm.get_user_by_username(username)
+
+    if user.session is not None and not twisted.is_comsol_session_active(user.session):
+        orm.delete(user.session)
+        user.session = None
+
+    if user.session is None:
         creds = orm.get_unused_credentials()
         if creds is not None:
-            session = twisted.get_comsol_session(u, creds)
-            orm.add(session)
-        else:
-            flask.abort(HTTPStatus.CONFLICT.value)
+            session = twisted.get_comsol_session(user, creds)
+            if session is not None:
+                orm.add(session)
+
+    if user.session is None:
+        flask.abort(HTTPStatus.CONFLICT.value)
 
     # Start Proxy Nginx and return redirect
-    proxy.add_session(u.session)
+    PROXY.add_session(user.session)
 
-    r = flask.redirect('http://comsol.radiasoft.org:{}/app-lib'.format(u.session.listen_port))
+    r = flask.redirect('http://comsol.radiasoft.org:{}/app-lib'.format(user.session.listen_port))
     r.set_cookie(
         domain='.radiasoft.org',
         httponly=True,
         key=comsoljupyter.RSESSIONID,
-        value=u.session.rsessionid,
+        value=user.session.rsessionid,
     )
 
     time.sleep(0.5)

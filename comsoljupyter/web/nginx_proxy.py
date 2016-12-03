@@ -23,10 +23,11 @@ class NginxProxy(object):
         'package_data/nginx_conf.jinja',
     )
 
-    def __init__(self, state_path):
+    def __init__(self, state_path, jupyterhub_base_url):
         self._nginx_proc = None
         self._session_cookies = {}
         self._state_path = state_path
+        self._jupyterhub_base_url = jupyterhub_base_url
 
     @property
     def _nginx_conf_file(self):
@@ -36,6 +37,7 @@ class NginxProxy(object):
         pykern.pkjinja.render_resource(
             'nginx_conf',
             {
+                'jupyterhub_base_url': self._jupyterhub_base_url,
                 'sessions': self._session_cookies.values(),
                 'state_path': self._state_path,
             },

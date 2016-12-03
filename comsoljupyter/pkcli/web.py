@@ -8,9 +8,14 @@ import comsoljupyter.web
 import traceback
 
 
-def default_command(port=5000, state_path='/tmp', debug=False):
+def default_command(port, jupyterhub_base_url, state_path='/tmp', debug=False):
     try:
-        comsoljupyter.web.run(port=port, state_path=state_path, debug=debug)
+        comsoljupyter.web.run(
+            debug=debug,
+            jupyterhub_base_url=jupyterhub_base_url,
+            port=int(port),
+            state_path=state_path,
+        )
     except:
         traceback.print_exc()
     finally:

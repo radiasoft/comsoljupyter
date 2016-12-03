@@ -9,14 +9,17 @@ http {
     error_log {{ state_path }}/comsol_nginx.error.log;
     access_log {{ state_path }}/comsol_nginx.access.log;
 
-
     {% for s in sessions %}
     server {
 
         listen {{ s.port }};
 
         if ($cookie_RSESSIONID != "{{ s.rsessionid }}") {
-            return 401;
+            return 301 {{ jupyterhub_base_url }};
+        }
+
+        location /comsol-logout {
+            return 301 {{ jupyterhub_base_url }}/services/comsol/logout;
         }
 
         location / {
