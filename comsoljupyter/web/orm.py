@@ -6,6 +6,7 @@
 """
 import comsoljupyter.web
 import flask_sqlalchemy
+import pickle
 import random
 import uuid
 
@@ -27,6 +28,7 @@ class ComsolCredentials(db.Model):
 
 
 class ComsolSession(db.Model):
+    _cookie_jar_pickle = db.Column(db.Text, nullable=False, unique=False)
     credential=db.relationship('ComsolCredentials', uselist=False,
         back_populates='session')
     credential_id = db.Column(db.Integer, db.ForeignKey('comsol_credentials.id'),
@@ -40,9 +42,10 @@ class ComsolSession(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True,
         nullable=False)
 
-    def __init__(self, user, cssessionid, jsessionid, credential):
+    def __init__(self, user, cssessionid, jsessionid, credential, cookie_jar):
         random.seed()
 
+        self._cookie_jar_pickle = pickle.dumps(cookie_jar)
         self.credential = credential
         self.cssessionid = cssessionid
         self.jsessionid = jsessionid
@@ -68,6 +71,9 @@ class ComsolSession(db.Model):
     def _get_random_port():
         return random.sample(range(2**16-100, 2**16-1), 1).pop()
 
+    @property
+    def cookie_jar(self):
+        return pickle.loads(self._cookie_jar_pickle)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
