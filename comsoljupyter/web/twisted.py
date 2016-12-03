@@ -4,6 +4,7 @@
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+import comsoljupyter
 import comsoljupyter.client
 import comsoljupyter.web.orm
 import threading
@@ -19,9 +20,9 @@ t.start()
 
 def get_comsol_session(user, credentials):
     client = comsoljupyter.client.ComsolClient(
-        'https://comsol.radiasoft.org',
-        credentials.username,
-        credentials.password,
+        base_url='https://comsol.radiasoft.org',
+        password=credentials.password,
+        user=credentials.username,
     )
 
     twisted.internet.threads.blockingCallFromThread(
@@ -29,16 +30,29 @@ def get_comsol_session(user, credentials):
         client.login,
     )
 
-    assert client.has_session and \
-        twisted.internet.threads.blockingCallFromThread(
+    if client.has_session and twisted.internet.threads.blockingCallFromThread(
+            twisted.internet.reactor, client.session_active):
+
+        return comsoljupyter.web.orm.ComsolSession(
+            cookie_jar=client.cookie_jar,
+            credential=credentials,
+            cssessionid=client.CSSESSIONID.value,
+            jsessionid=client.JSESSIONID.value,
+            user=user,
+        )
+
+def is_comsol_session_active(session):
+    if session is not None:
+        client = comsoljupyter.client.ComsolClient(
+            base_url='https://comsol.radiasoft.org',
+            cookie_jar=session.cookie_jar,
+            password=session.credential.password,
+            user=session.credential.username,
+        )
+
+        return twisted.internet.threads.blockingCallFromThread(
             twisted.internet.reactor,
             client.session_active,
         )
 
-    return comsoljupyter.web.orm.ComsolSession(
-        user,
-        client.CSSESSIONID.value,
-        client.JSESSIONID.value,
-        credentials,
-    )
-
+    return False

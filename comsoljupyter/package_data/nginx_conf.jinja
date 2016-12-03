@@ -1,14 +1,13 @@
 daemon off;
-pid /tmp/nginx_comsol.pid;
+pid {{ state_path }}/nginx_comsol.pid;
 
 events {
     worker_connections 768;
 }
 
 http {
-    error_log /tmp/comsol_nginx.error.log;
-    access_log /tmp/comsol_nginx.access.log;
-
+    error_log {{ state_path }}/comsol_nginx.error.log;
+    access_log {{ state_path }}/comsol_nginx.access.log;
 
     {% for s in sessions %}
     server {
@@ -16,7 +15,11 @@ http {
         listen {{ s.port }};
 
         if ($cookie_RSESSIONID != "{{ s.rsessionid }}") {
-            return 401;
+            return 301 {{ jupyterhub_base_url }};
+        }
+
+        location /comsol-logout {
+            return 301 {{ jupyterhub_base_url }}/services/comsol/logout;
         }
 
         location / {

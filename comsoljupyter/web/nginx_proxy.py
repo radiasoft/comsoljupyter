@@ -18,20 +18,29 @@ ProxiedSession = collections.namedtuple(
 )
 
 class NginxProxy(object):
-    _nginx_conf_file = '/tmp/comsol_nginx.conf'
     _nginx_conf_template = pkg_resources.resource_filename(
         'comsoljupyter',
-        'package_data/nginx.j2',
+        'package_data/nginx_conf.jinja',
     )
 
-    def __init__(self):
+    def __init__(self, state_path, jupyterhub_base_url):
         self._nginx_proc = None
         self._session_cookies = {}
+        self._state_path = state_path
+        self._jupyterhub_base_url = jupyterhub_base_url
+
+    @property
+    def _nginx_conf_file(self):
+        return '{}/comsol_nginx.conf'.format(self._state_path)
 
     def _update_config(self):
         pykern.pkjinja.render_resource(
             'nginx_conf',
-            {'sessions': self._session_cookies.values()},
+            {
+                'jupyterhub_base_url': self._jupyterhub_base_url,
+                'sessions': self._session_cookies.values(),
+                'state_path': self._state_path,
+            },
             self._nginx_conf_file,
         )
 
@@ -41,7 +50,7 @@ class NginxProxy(object):
                     [
                         'nginx', '-c', self._nginx_conf_file,
                         '-g', 'error_log stderr;',
-                        '-p', '/tmp'
+                        '-p', self._state_path
                         ]
                 )
             else:
@@ -70,3 +79,8 @@ class NginxProxy(object):
         if session.rsessionid in self._session_cookies:
             del self._session_cookies[session.rsessionid]
             self._update_config()
+
+    def stop(self):
+        if self._nginx_proc is not None:
+            self._nginx_proc.terminate()
+            self._nginx_proc = None
