@@ -1,61 +1,38 @@
 # ComsolJupyter
 
-Provides a web application to proxy user sessions from a demo web app to Comsol User sessions.
+Provides a [JupyterHub](https://github.com/jupyterhub/jupyterhub) service to authenticate and proxy Comsol sessions.
 
-## Requirements 
+## Running Test Instance
 
-* vagrant
-* VirtualBox
+:warning: Do not run on the public cloud, since the test instance does not provide any security at all.
 
-## Setup
+### Requirements 
 
-This demo application works as inside a VirtualBox VM that serves as a MITM between the real application and the user.
+* docker
 
-:warning: This demo application does not use encryption; it is intended to be a demo and used locally. Do not run across a public network.
+### Setup
 
-Start Vagrant:
+Add a file named `integration-test/credentials.txt` with all the Comsol credentials you want to see into the system. The format is a space separated usernames and passwords:
 
-```sh
-cd comsoljupyter/vagrant
-vagrant up
+```
+<username1> <password1>
+<username2> <password2>
+...
 ```
 
-Setup your MITM domain:
+Also point `jupyter.radiasot.org` and `comsol.radiasoft.org` to `localhost` by editing `/etc/hosts`.
+
+### Execution
+
+Run the following script:
 
 ```sh
-sudo echo '192.168.33.10 comsol.radiasoft.org' >> /etc/hosts 
+cd integration-test
+./test.sh
 ```
+### Usage
 
-## Usage
-
-All the commands must be executed within the Vagrant vm:
-
-```sh
-cd comsoljupyter/vagrant
-vagrant ssh
-```
-
-### Create DB Info
-
-Add a user:
-
-```sh
-comsoljupyter db add-user <username> <password>
-```
-
-Add Comsol credentials:
-
-```sh
-comsoljupyter db add-credentials <username> <password>
-```
-
-Star the Web application:
-
-```sh
-comsoljupyter web
-```
-
-Visit the followign URL: [`http://www.comsol.radiasoft.org:5000`](http://www.comsol.radiasoft.org:5000).
+Visit [`http://jupyter.radiasoft.org:8000/services/comsol`](http://jupyter.radiasoft.org:8000/services/comsol).
 
 
 # License
