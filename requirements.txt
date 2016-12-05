@@ -1,8 +1,8 @@
 Flask-SQLAlchemy
 Twisted
 flask
+iso8601
 jupyterhub
 pyOpenSSL
 pykern
-pyyaml
 service-identity

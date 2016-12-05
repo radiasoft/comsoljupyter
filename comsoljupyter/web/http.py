@@ -49,7 +49,7 @@ def jupyterhub_auth(f):
             user = None
 
         if user is not None:
-            return f(str(user), *a, **kw)
+            return f(user['name'], *a, **kw)
 
         return flask.redirect(
             auth.login_url+'?next={}'.format(urllib.parse.quote(flask.request.path)))
@@ -76,6 +76,8 @@ def get_comsol_session(username):
     user = orm.get_user_by_username(username)
 
     if user.session is not None and not twisted.is_comsol_session_active(user.session):
+        app.logger.info('Found inactive session {rsessionid} on port {port} for {username}'.format(
+            username=username, port=user.session.port, rsessionid=user.session.rsessionid))
         orm.delete(user.session)
         user.session = None
 
@@ -85,8 +87,13 @@ def get_comsol_session(username):
             session = twisted.get_comsol_session(user, creds)
             if session is not None:
                 orm.add(session)
+            else:
+                app.logger.error('Unable to initiate comsol session for {username}'.format(username=username))
+        else:
+            app.logger.error('Unable to find credentials for {username}'.format(username=username))
 
     if user.session is None:
+        app.logger.error('Unable to start session for {username}'.format(username=username))
         flask.abort(HTTPStatus.CONFLICT.value)
 
     # Start Proxy Nginx and return redirect
@@ -101,5 +108,8 @@ def get_comsol_session(username):
     )
 
     time.sleep(0.5)
+
+    app.logger.info('Session {rsessionid} on port {port} for {username}'.format(
+        username=username, port=user.session.listen_port, rsessionid=user.session.rsessionid))
 
     return r

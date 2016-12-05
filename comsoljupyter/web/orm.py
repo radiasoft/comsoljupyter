@@ -88,19 +88,24 @@ class User(db.Model):
         return '<User %r>' % self.username
 
 
-def add(obj):
-    db.session.add(obj)
+def add(*objs):
+    for obj in objs:
+        db.session.add(obj)
     db.session.commit()
-    return obj
 
 
 def cleanup():
     db.session.commit()
 
 
-def delete(obj):
-    db.session.delete(obj)
+def delete(*objs):
+    for obj in objs:
+        db.session.delete(obj)
     db.session.commit()
+
+
+def get_session_by_rsessionid(rsessionid):
+    return ComsolSession.query.filter(ComsolSession.rsessionid == rsessionid).first()
 
 
 def get_unused_credentials():

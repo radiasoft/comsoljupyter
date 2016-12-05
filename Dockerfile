@@ -2,7 +2,7 @@ FROM jupyterhub/jupyterhub:latest
 MAINTAINER Pepe Barbe <pepe@radiasoft.net>
 
 RUN apt-get update && \
-    apt-get install -y build-essential libffi-dev nginx-full libssl-dev 
+    apt-get install -y build-essential libffi-dev nginx-full libssl-dev htop vim
    
 ADD requirements.txt /src/requirements.txt
 # One of the dependencies in comsoljupyter requires pyasn1 and pyasn1-modules.
