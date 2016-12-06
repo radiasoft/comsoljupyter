@@ -7,9 +7,8 @@
 from comsoljupyter.web import app, orm, twisted, nginx_proxy
 from http import HTTPStatus
 import comsoljupyter
-import datetime
+import flask
 import functools
-import html
 import jupyterhub.services.auth
 import os
 import time
@@ -17,7 +16,6 @@ import urllib.parse
 
 app.secret_key = 'super secret string'  # Change this!
 
-import flask
 
 auth = jupyterhub.services.auth.HubAuth(
     api_token=os.environ['JUPYTERHUB_API_TOKEN'],
@@ -38,6 +36,7 @@ def init(state_path, jupyterhub_base_url):
 
     JUPYTERHUB_BASE_URL = jupyterhub_base_url
     PROXY = nginx_proxy.NginxProxy(state_path, jupyterhub_base_url)
+    PROXY.start()
 
 def jupyterhub_auth(f):
     @functools.wraps(f)
@@ -64,6 +63,7 @@ def forget_comsol_session(username):
     user = orm.get_user_by_username(username)
 
     if user.session is not None:
+        PROXY.delete_sessions(user.session)
         orm.delete(user.session)
         user.session = None
 

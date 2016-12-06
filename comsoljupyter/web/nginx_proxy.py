@@ -4,7 +4,7 @@
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from comsoljupyter.web import orm
+from comsoljupyter.web import app, orm
 import collections
 import copy
 import datetime
@@ -20,6 +20,8 @@ import tempfile
 import threading
 import time
 
+ACTIVITY_LINE_LEN = 60
+
 class NginxProcessStoppedError(Exception): pass
 
 
@@ -27,11 +29,15 @@ class ActivityMonitor(threading.Thread):
     def __init__(self, state_path, nginx_process):
         super().__init__(daemon=True, name=self.__class__.__name__)
 
+        assert nginx_process is not None
+
         self._activity_glob = os.path.join(state_path, 'nginx_activity.*.log')
         self._lock = threading.Lock()
         self._nginx_process = nginx_process
         self._state_path = state_path
         self._stats = {}
+
+        self._check_nginx_alive()
 
     def _check_nginx_alive(self):
         if self._nginx_process.poll() is not None:
@@ -42,8 +48,7 @@ class ActivityMonitor(threading.Thread):
         stats = {}
         for filename in files:
             with open(filename, 'r') as f:
-                first = f.readline()
-                f.seek(-len(first)*3, 2)
+                f.seek(-ACTIVITY_LINE_LEN*3, 2)
                 last = f.readlines()[-1]
                 rsessionid, timestr = last.split(' ', 1)
                 stats[rsessionid] = iso8601.parse_date(timestr)
@@ -65,10 +70,12 @@ class ActivityMonitor(threading.Thread):
 
     def _run(self):
         with tempfile.TemporaryDirectory() as temp_dir:
+            app.logger.info('Log temp dir {}'.format(temp_dir))
             while True:
                 time.sleep(30)
+                app.logger.debug('Initiating monitoring')
                 self._check_nginx_alive()
-                to_process = self.rotate_logs(temp_dir)
+                to_process = self._rotate_logs(temp_dir)
                 stats = self._read_logs(to_process)
                 self._update_stats(stats)
 
@@ -83,6 +90,7 @@ class ActivityMonitor(threading.Thread):
             return s
 
     def run(self):
+        app.logger.info('ActivityMonitor started')
         try:
             self._run()
         except NginxProcessStoppedError:
@@ -104,9 +112,11 @@ class NginxProxy(threading.Thread):
     def __init__(self, state_path, jupyterhub_base_url):
         super().__init__(name=self.__class__.__name__, daemon=True)
 
+        self._continue = True
         self._jupyterhub_base_url = jupyterhub_base_url
         self._lock = threading.Lock()
         self._nginx_proc = None
+        self._pid = None
         self._session_cookies = {}
         self._state_path = state_path
 
@@ -116,6 +126,35 @@ class NginxProxy(threading.Thread):
     @property
     def _nginx_conf_file(self):
         return '{}/comsol_nginx.conf'.format(self._state_path)
+
+    @property
+    def _nginx_pid(self):
+        # Nginx seems to do some process shenanigans at startup, even if it
+        # is setup to not daemonize. The PID pointed by the Popen is incorrect
+        # and in order to send signals to the right process we need to rely on the
+        # text file with the PID.
+        if self._pid is None:
+            with open(os.path.join(self._state_path, 'nginx_comsol.pid'), 'r') as f:
+                self._pid = int(f.read())
+        return self._pid
+
+    def _nginx_reload_conf(self):
+        app.logger.debug('Sending SIGHUP to Nginx PID {}'.format(self._nginx_pid))
+        os.kill(self._nginx_pid, signal.SIGHUP)
+
+    def _start_nginx(self):
+        if self._nginx_proc is None:
+            self._nginx_proc = subprocess.Popen(
+                [
+                    'nginx', '-c', self._nginx_conf_file,
+                    '-g', 'error_log stderr;',
+                    '-p', self._state_path
+                    ]
+            )
+
+            return True
+
+        return False
 
     def _update_config(self):
         with self._lock:
@@ -131,22 +170,8 @@ class NginxProxy(threading.Thread):
             self._nginx_conf_file,
         )
 
-        if len(self._session_cookies) > 0:
-            if self._nginx_proc is None:
-                self._nginx_proc = subprocess.Popen(
-                    [
-                        'nginx', '-c', self._nginx_conf_file,
-                        '-g', 'error_log stderr;',
-                        '-p', self._state_path
-                        ]
-                )
-            else:
-                self._nginx_proc.send_signal(signal.SIGHUP)
-        else:
-            if self._nginx_proc is not None:
-                n = self._nginx_proc
-                self._nginx_proc = None
-                n.kill()
+        if not self._start_nginx():
+            self._nginx_reload_conf()
 
     def add_session(self, session):
         p = ProxiedSession(
@@ -175,9 +200,10 @@ class NginxProxy(threading.Thread):
             self._update_config()
 
     def run(self):
+        app.logger.info('NginxProxy started')
         self._monitor.start()
 
-        while self._monitor.is_alive():
+        while self._continue and self._monitor.is_alive():
             time.sleep(60*5)
 
             expired_sessions = set()
@@ -197,3 +223,4 @@ class NginxProxy(threading.Thread):
         if self._nginx_proc is not None:
             self._nginx_proc.terminate()
             self._nginx_proc = None
+        self._continue = False

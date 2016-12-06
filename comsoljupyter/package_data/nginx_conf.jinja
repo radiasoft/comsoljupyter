@@ -18,10 +18,11 @@ http {
     }
 
     {% for s in sessions %}
+    log_format activity_{{ s.port }} '{{ s.rsessionid }} $time_iso8601'; 
+
     server {
         listen {{ s.port }};
 
-        log_format activity_{{ s.port }} '{{ s.rsessionid }} $time_iso8601'; 
         access_log {{ state_path }}/nginx_activity.{{ s.port }}.log activity_{{ s.port }};
 
         if ($cookie_RSESSIONID != "{{ s.rsessionid }}") {
