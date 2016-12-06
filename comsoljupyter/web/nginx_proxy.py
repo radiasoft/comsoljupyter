@@ -103,11 +103,12 @@ class ActivityMonitor(threading.Thread):
         with self._lock:
             self._stats.update(new_stats)
 
-    def get_and_clear_stats(self):
+    def delete_session_stat(self, rsessionid):
         with self._lock:
-            s = self._stats
-            self._stats = {}
-            return s
+            try:
+                del self._stats[rsessionid]
+            except KeyError:
+                pass
 
     def get_stats(self):
         with self._lock:
@@ -215,9 +216,11 @@ class NginxProxy(threading.Thread):
     def delete_sessions(self, *sessions):
         changed = False
         for session in sessions:
-            if session.rsessionid in self._session_cookies:
+            rsessionid = session.rsessionid
+            self.activity_monitor.delete_session_stat(rsessionid)
+            if rsessionid in self._session_cookies:
                 with self._lock:
-                    del self._session_cookies[session.rsessionid]
+                    del self._session_cookies[rsessionid]
                 changed = True
 
         if changed:
@@ -232,7 +235,7 @@ class NginxProxy(threading.Thread):
 
             expired_sessions = set()
 
-            stats = self.activity_monitor.get_and_clear_stats()
+            stats = self.activity_monitor.get_stats()
 
             for rsessionid, last_access in stats.items():
                 if datetime.datetime.now(pytz.utc) - last_access >= datetime.timedelta(minutes=5):
