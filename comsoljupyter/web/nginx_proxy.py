@@ -9,6 +9,7 @@ import collections
 import copy
 import datetime
 import glob
+import io
 import iso8601
 import os
 import pkg_resources
@@ -20,7 +21,7 @@ import tempfile
 import threading
 import time
 
-ACTIVITY_LINE_LEN = 60
+ACTIVITY_LINE_LEN = 59
 
 class NginxProcessStoppedError(Exception): pass
 
@@ -44,14 +45,32 @@ class ActivityMonitor(threading.Thread):
             raise NginxProcessStoppedError
 
     @staticmethod
+    def _read_log(f, stats):
+        f.seek(0, io.SEEK_END)
+        length = f.tell()
+
+        if length > ACTIVITY_LINE_LEN*2:
+            f.seek(length - ACTIVITY_LINE_LEN*2, io.SEEK_SET)
+        else:
+            f.seek(0, io.SEEK_SET)
+
+        lines = f.readlines()
+        for line in reversed(lines):
+            try:
+                rsessionid, timestr = line.split(' ', 1)
+                stats[rsessionid] = iso8601.parse_date(timestr)
+            except:
+                continue
+            else:
+                return
+
+    @staticmethod
     def _read_logs(files):
         stats = {}
         for filename in files:
             with open(filename, 'r') as f:
-                f.seek(-ACTIVITY_LINE_LEN*3, 2)
-                last = f.readlines()[-1]
-                rsessionid, timestr = last.split(' ', 1)
-                stats[rsessionid] = iso8601.parse_date(timestr)
+                ActivityMonitor._read_log(f, stats)
+
         return stats
 
     def _rotate_logs(self, dest):
