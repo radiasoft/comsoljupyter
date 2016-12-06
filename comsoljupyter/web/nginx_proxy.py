@@ -14,6 +14,7 @@ import iso8601
 import os
 import pkg_resources
 import pykern.pkjinja
+import pytz
 import shutil
 import signal
 import subprocess
@@ -234,7 +235,7 @@ class NginxProxy(threading.Thread):
             stats = self.activity_monitor.get_and_clear_stats()
 
             for rsessionid, last_access in stats.items():
-                if datetime.datetime.now() - last_access >= datetime.timedelta(minutes=5):
+                if datetime.datetime.now(pytz.utc) - last_access >= datetime.timedelta(minutes=5):
                     s = orm.get_session_by_rsessionid(rsessionid)
                     if s is not None:
                         expired_sessions.add(s)

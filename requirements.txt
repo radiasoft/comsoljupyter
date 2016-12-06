@@ -5,4 +5,5 @@ iso8601
 jupyterhub
 pyOpenSSL
 pykern
+pytz
 service-identity
