@@ -1,3 +1,5 @@
+c.Authenticator.admin_users = {'jupyterhub'}
+
 c.JupyterHub.services = [
     {
         'command': [

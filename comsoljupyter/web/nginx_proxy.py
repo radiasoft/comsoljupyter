@@ -89,6 +89,10 @@ class ActivityMonitor(threading.Thread):
             self._stats = {}
             return s
 
+    def get_stats(self):
+        with self._lock:
+            return copy.copy(self._stats)
+
     def run(self):
         app.logger.info('ActivityMonitor started')
         try:
@@ -121,7 +125,7 @@ class NginxProxy(threading.Thread):
         self._state_path = state_path
 
         self._update_config()
-        self._monitor = ActivityMonitor(state_path, self._nginx_proc)
+        self.activity_monitor = ActivityMonitor(state_path, self._nginx_proc)
 
     @property
     def _nginx_conf_file(self):
@@ -201,14 +205,14 @@ class NginxProxy(threading.Thread):
 
     def run(self):
         app.logger.info('NginxProxy started')
-        self._monitor.start()
+        self.activity_monitor.start()
 
-        while self._continue and self._monitor.is_alive():
+        while self._continue and self.activity_monitor.is_alive():
             time.sleep(60*5)
 
             expired_sessions = set()
 
-            stats = self._monitor.get_and_clear_stats()
+            stats = self.activity_monitor.get_and_clear_stats()
 
             for rsessionid, last_access in stats.items():
                 if datetime.datetime.now() - last_access >= datetime.timedelta(minutes=5):
