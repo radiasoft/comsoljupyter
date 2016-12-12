@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
-
 """
+Implements a Twisted HTTP client that knows how to login to Comsol
+capture a session key and also load sessions keys and test if the
+sessions are still valid.
+
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
@@ -21,6 +24,9 @@ import urllib.parse
 class ComsolClientError(Exception): pass
 
 class HTMLTitleParser(html.parser.HTMLParser):
+    """Implenebts an HTML parser only for
+    capturing the page title.
+    """
     def __init__(self):
         super().__init__()
         self.title = False
@@ -40,12 +46,24 @@ class HTMLTitleParser(html.parser.HTMLParser):
             self.title = True
 
 class ComsolClient(object):
+    """Implements all the logic to talk
+    to the Comsol Server.
+    """
     _login_title = 'Log in to COMSOL Server'
     _library_title = 'Application Library | COMSOL Server'
     _j_security_check = 'j_security_check'
     _app_lib = 'app-lib'
     _jquery = 'javascript/jquery.min.js'
     def __init__(self, base_url, user, password, cookie_jar=None):
+        """
+        Args:
+            base_url (str): Base URL of the Comsol Server, e.g.
+                https://comsol.radiasoft.org
+            user (str): Comsol username
+            password (str): Comsol password
+            cookie_jar (http.cookiejar.CookieJar): Can be None or
+                instance with Cookies to reuse.
+        """
         self._cookie_cache = {}
         self.base_url = base_url
         self.cookie_jar = http.cookiejar.CookieJar() if cookie_jar is None else cookie_jar
@@ -80,6 +98,13 @@ class ComsolClient(object):
         return self.request('GET', path, headers, *a, **kw)
 
     def get_cookie(self, name):
+        """
+        Args:
+            name (str): cookie name to search in the cookie jar
+
+        Returns:
+            http.cookiejar.Cookie: None if cookie is not found.
+        """
         if name not in self._cookie_cache:
             cookie = comsoljupyter.search_in_cookie_jar(self.cookie_jar, name)
             if cookie is not None:
@@ -88,6 +113,9 @@ class ComsolClient(object):
 
     @property
     def has_session(self):
+        """
+        Checks wether the ComsolClient has been able to obtain a session
+        """
         return self.CSSESSIONID is not None and self.JSESSIONID is not None
 
     @property
@@ -95,6 +123,12 @@ class ComsolClient(object):
         return self.get_cookie(JSESSIONID)
 
     def login(self):
+        """
+        Triggers the login process
+
+        Returns:
+            bool: True if the login is successful, False otherwise
+        """
         def handle_login_resp(resp):
             self._check_response(resp, HTTPStatus.OK)
             return self.has_session
@@ -139,6 +173,12 @@ class ComsolClient(object):
         pickle.dump(self.cookie_jar, open(filename, 'wb'))
 
     def session_active(self):
+        """
+        Checks if the existing session is active
+
+        Returns:
+            bool: True if the session is active, False otherwise
+        """
         if not self.has_session:
             d = defer.Deferred()
             d.callback(False)

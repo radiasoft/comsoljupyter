@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
+Implements all the Flask view logic
+
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
@@ -15,7 +17,6 @@ import time
 import urllib.parse
 
 app.secret_key = 'super secret string'  # Change this!
-
 
 auth = jupyterhub.services.auth.HubAuth(
     api_token=os.environ['JUPYTERHUB_API_TOKEN'],
@@ -32,6 +33,12 @@ def cleanup():
         PROXY.stop()
 
 def init(state_path, jupyterhub_base_url):
+    """
+    Args:
+        state_path (str): path to directory where state information should be stored
+        jupyterhub_base_url (str): base url for JupyterHub, e.g.
+            https://jupyter.radiasoft.org
+    """
     global PROXY, JUPYTERHUB_BASE_URL
 
     JUPYTERHUB_BASE_URL = jupyterhub_base_url
@@ -39,6 +46,8 @@ def init(state_path, jupyterhub_base_url):
     PROXY.start()
 
 def jupyterhub_auth(f):
+    """ Wrapper function to implement JupyterHub authentication, Flask style
+    """
     @functools.wraps(f)
     def wrapper(*a, **kw):
         cookie = flask.request.cookies.get(auth.cookie_name)
@@ -60,6 +69,8 @@ def jupyterhub_auth(f):
 @app.route(PREFIX + '/logout')
 @jupyterhub_auth
 def forget_comsol_session(jupyter_user):
+    """Logout from the Sessiol Proxy system
+    """
     user = orm.get_user_by_username(jupyter_user['name'])
 
     if user.session is not None:
@@ -73,6 +84,9 @@ def forget_comsol_session(jupyter_user):
 @app.route(PREFIX)
 @jupyterhub_auth
 def get_comsol_session(jupyter_user):
+    """Request a Comsol session, if successful, reponse will redirect you to the
+    Comsol proxy to access Comsol directly.
+    """
     username = jupyter_user['name']
     user = orm.get_user_by_username(username)
 
@@ -119,6 +133,10 @@ def get_comsol_session(jupyter_user):
 @app.route(PREFIX + '/sessions')
 @jupyterhub_auth
 def list_sessions(jupyter_user):
+    """
+    Helper method to list active sessions in the service. Only users marked as Admin can access
+    the information
+    """
     if not jupyter_user['admin']:
         flask.abort(HTTPStatus.UNAUTHORIZED.value)
 

@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 """
+Simple SQLAlchemy ORM to handle user, Comsol credentials and
+Session information.
+
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
@@ -16,6 +19,8 @@ db = flask_sqlalchemy.SQLAlchemy(comsoljupyter.web.app)
 
 
 class ComsolCredentials(db.Model):
+    """Stores Comsol crediental information
+    """
     id = db.Column(db.Integer, primary_key=True)
     password = db.Column(db.String(256), nullable=False)
     session = db.relationship('ComsolSession',
@@ -28,6 +33,9 @@ class ComsolCredentials(db.Model):
 
 
 class ComsolSession(db.Model):
+    """
+    Stores a proxied session information
+    """
     _cookie_jar_pickle = db.Column(db.Text, nullable=False, unique=False)
     credential=db.relationship('ComsolCredentials', uselist=False,
         back_populates='session')
@@ -76,6 +84,8 @@ class ComsolSession(db.Model):
         return pickle.loads(self._cookie_jar_pickle)
 
 class User(db.Model):
+    """External application user information, in this case JupyterHub
+    """
     id = db.Column(db.Integer, primary_key=True)
     session = db.relationship('ComsolSession',
         back_populates='user', uselist=False)
@@ -87,7 +97,7 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % self.username
 
-
+# Below are various helper functions
 def add(*objs):
     for obj in objs:
         db.session.add(obj)

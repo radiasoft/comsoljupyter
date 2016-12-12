@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 
 """
+Implements interface to Nginx to add and remove sessions dynamically.
+
+A new configuration will be written with changes and the Nginx child process
+will be signalled to reload the new configuration.
+
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
@@ -28,6 +33,12 @@ class NginxProcessStoppedError(Exception): pass
 
 
 class ActivityMonitor(threading.Thread):
+    """
+    Rotates Nginx logs and process the old logs to check for activity
+    from the sessions handled by Nginx.
+
+    Runs asyncronously within a Thread.
+    """
     def __init__(self, state_path, nginx_process):
         super().__init__(daemon=True, name=self.__class__.__name__)
 
@@ -47,6 +58,11 @@ class ActivityMonitor(threading.Thread):
 
     @staticmethod
     def _read_log(f, stats):
+        """
+        Since all log lines will have the same length, we try to determine the size of the log and
+        advance to almost the last entry, to save some unnecessary reading. If unsuccessful, just read the
+        entire log from the beginning until we find the last entry.
+        """
         f.seek(0, io.SEEK_END)
         length = f.tell()
 
@@ -129,12 +145,19 @@ ProxiedSession = collections.namedtuple(
 
 
 class NginxProxy(threading.Thread):
+    """Nginx Manager class`
+    """
     _nginx_conf_template = pkg_resources.resource_filename(
         'comsoljupyter',
         'package_data/nginx_conf.jinja',
     )
 
     def __init__(self, state_path, jupyterhub_base_url):
+        """
+        Args:
+            state_path (str): path to directory where nginx information will be stored
+            jupyterhub_base_url (str): base url for JupyterHub
+        """
         super().__init__(name=self.__class__.__name__, daemon=True)
 
         self._continue = True
@@ -199,6 +222,11 @@ class NginxProxy(threading.Thread):
             self._nginx_reload_conf()
 
     def add_session(self, session):
+        """Add new comsol session
+
+        Args:
+            session (orm.ComsolSession): session to add to the proxy
+        """
         p = ProxiedSession(
             cssessionid=session.cssessionid,
             jsessionid=session.jsessionid,
@@ -214,6 +242,12 @@ class NginxProxy(threading.Thread):
             self._update_config()
 
     def delete_sessions(self, *sessions):
+        """Remove sessions from the Proxy
+
+        Args:
+            sessions (orm.ComsolSession): variable size argument list of all the sessions that
+                sould be remove from the proxy
+        """
         changed = False
         for session in sessions:
             rsessionid = session.rsessionid
@@ -247,6 +281,8 @@ class NginxProxy(threading.Thread):
             self.delete_sessions(*expired_sessions)
 
     def stop(self):
+        """Stop the proxy
+        """
         if self._nginx_proc is not None:
             self._nginx_proc.terminate()
             self._nginx_proc = None

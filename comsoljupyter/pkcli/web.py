@@ -9,6 +9,12 @@ import traceback
 
 
 def default_command(port, jupyterhub_base_url, state_path='/tmp', debug=False):
+    """Start the comsoljupyter JupyterHub Service
+    Args:
+        port (str): TCP port where the service HTTP server will be listening to
+        jupyterhub_base_url (str): JupyterHub base url
+        state_path (str): path to directory where internal state information will be stored
+    """
     try:
         comsoljupyter.web.run(
             debug=debug,
